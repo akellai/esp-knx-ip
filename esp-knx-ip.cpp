@@ -39,6 +39,53 @@ void ESPKNXIP::start()
   __start();
 }
 
+void  ESPKNXIP::send_udp(uint8_t *datagram, size_t size)
+{
+  DEBUG_PRINT(F("Sending packet:"));
+  for (int i = 0; i < size; ++i)
+  {
+    DEBUG_PRINT(F(" 0x"));
+    DEBUG_PRINT(datagram[i], 16);
+  }
+  DEBUG_PRINTLN(F(""));
+
+  udp.beginPacket(udpAddress, MULTICAST_PORT);
+  udp.write(datagram, size);
+  udp.endPacket();
+}
+
+void ESPKNXIP::send_connect_request()
+{
+  IPAddress local_ip = WiFi.localIP();
+
+  // HEADER
+  byte datagram[] = 
+  { 0x06, 0x10, 0x02, 0x05, 0x00, 0x1A,
+    0x08, 0x01, local_ip[0], local_ip[1], local_ip[2], local_ip[3], (byte)(MULTICAST_PORT >> 8), (byte)MULTICAST_PORT,
+    0x08, 0x01, local_ip[0], local_ip[1], local_ip[2], local_ip[3], (byte)(MULTICAST_PORT >> 8), (byte)MULTICAST_PORT,
+    0x04, 0x04, 0x02, 0x00 };
+
+  //send connect request to server
+  DEBUG_PRINTLN("Sending connect request packet");
+
+  send_udp(datagram, sizeof(datagram));
+}
+
+void ESPKNXIP::SendTunnelingAck(byte sequenceNumber)
+{
+  IPAddress local_ip = WiFi.localIP();
+
+  // HEADER
+  byte datagram[] =
+  { 0x06, 0x10, 0x04, 0x21, 0x00, 0x0A,
+    0x04, ChannelId, sequenceNumber, 0x00 };
+
+  //send connect request to server
+  DEBUG_PRINTLN("Sending SendTunnelingAck packet");
+
+  send_udp(datagram, sizeof(datagram));
+}
+
 void ESPKNXIP::__start()
 {
   if (server != nullptr)
@@ -82,7 +129,12 @@ void ESPKNXIP::__start()
     server->begin();
   }
 
-  udp.beginMulticast(WiFi.localIP(),  MULTICAST_IP, MULTICAST_PORT);
+// AB
+  reset_AB();
+  udp.begin(MULTICAST_PORT);
+  send_connect_request();
+
+  //udp.beginMulticast(WiFi.localIP(),  MULTICAST_IP, MULTICAST_PORT);
 }
 
 void ESPKNXIP::save_to_eeprom()
@@ -344,8 +396,52 @@ void ESPKNXIP::__loop_webserver()
   server->handleClient();
 }
 
+static const int ATTEMPTS = 3;
+
 void ESPKNXIP::__loop_knx()
 {
+  unsigned long now = millis();
+  if( connected==1 )
+  {
+    if (next_ping < now)
+    {
+      if( alive==ATTEMPTS )
+      {
+        // disconnect!!!
+        DEBUG_PRINTLN("No ACKs: alive==0!!!");
+        reset_AB();
+        return;
+        // TODO: send disconnec t request
+      }
+      else if( alive<ATTEMPTS )
+        alive++;
+      else
+        alive = 0;
+
+      next_ping = now + stateRequestTimerInterval;
+      // send StateRequest
+      IPAddress local_ip = WiFi.localIP();
+
+      byte datagram[] = 
+      { 0x06, 0x10, 0x02, 0x07, 0x00, 0x10,
+        ChannelId, 0x00, 0x08, 0x01, local_ip[0], local_ip[1], local_ip[2], local_ip[3], (byte)(MULTICAST_PORT >> 8), (byte)MULTICAST_PORT
+      };
+      //send connect request to server
+      DEBUG_PRINTLN("Sending StateRequest packet");
+
+      send_udp(datagram, sizeof(datagram));
+    }
+  }
+  else
+  {
+    if( next_reconnect<now )
+    {
+      reset_AB();
+      send_connect_request();
+      return;
+    }
+  }
+
   int read = udp.parsePacket();
   if (!read)
   {
@@ -358,7 +454,7 @@ void ESPKNXIP::__loop_knx()
   uint8_t buf[read];
 
   udp.read(buf, read);
-  udp.flush();
+  //udp.flush();
 
   DEBUG_PRINT(F("Got packet:"));
   for (int i = 0; i < read; ++i)
@@ -376,10 +472,72 @@ void ESPKNXIP::__loop_knx()
   if (knx_pkt->header_len != 0x06 && knx_pkt->protocol_version != 0x10 && knx_pkt->service_type != KNX_ST_ROUTING_INDICATION)
     return;
 
-  cemi_msg_t *cemi_msg = (cemi_msg_t *)knx_pkt->pkt_data;
+  cemi_msg_t *cemi_msg = (cemi_msg_t *) (buf+10);
 
   DEBUG_PRINT(F("MT: 0x"));
   DEBUG_PRINTLN(cemi_msg->message_code, 16);
+
+  // AB
+  // Minimal length?
+  if( read<8 )
+  {
+    DEBUG_PRINTLN("Message is less than 8 bytes");
+    return;
+  }
+
+  if( KNX_ST_CONNECT_RESPONSE==__ntohs(knx_pkt->service_type) )
+  {
+    reset_AB();
+
+    // Connection ACK
+    ChannelId = buf[6];
+
+    if( ChannelId==0 )
+    {
+      DEBUG_PRINTLN("AB: The connect ACK - No more connections available");
+      return;
+    }
+    connected = 1;
+    DEBUG_PRINT(F("CONNECTED Channel ID: 0x"));
+    alive = ATTEMPTS+1;
+    DEBUG_PRINTLN(ChannelId, 16);
+    return;
+  }
+
+  if(  KNX_ST_CONNECTIONSTATE_RESPONSE==__ntohs(knx_pkt->service_type) )
+  {
+    if( (ChannelId==buf[6])&&(buf[7]==0) )	// Correct channel, no errors
+      alive = ATTEMPTS+1;
+    else
+    {
+      DEBUG_PRINT("Error getting KNX_ST_CONNECTIONSTATE_RESPONSE: Status code: ");
+      DEBUG_PRINTLN(buf[7], 16);
+    }
+    return;
+  }
+
+  if( KNX_ST_DISCONNECT_REQUEST==__ntohs(knx_pkt->service_type) )
+  {
+    DEBUG_PRINTLN(F("DISCONNECT REQUEST"));
+    if( ChannelId==buf[6] )
+    {
+      reset_AB();
+    }
+    return;
+  }
+
+  // Valid ChannelId?
+  if( ChannelId!=buf[7] )
+  {
+    DEBUG_PRINT("Foreign ChannelID :");
+    DEBUG_PRINT(buf[7],16);
+    DEBUG_PRINT("; should be: ");
+    DEBUG_PRINTLN(ChannelId,16);
+    return;
+  }
+
+  if( KNX_ST_TUNNELING_REQUEST==__ntohs(knx_pkt->service_type) )
+    SendTunnelingAck(buf[8]);
 
   if (cemi_msg->message_code != KNX_MT_L_DATA_IND)
     return;

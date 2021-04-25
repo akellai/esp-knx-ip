@@ -48,9 +48,20 @@
 
 #include "Arduino.h"
 #include <EEPROM.h>
+
+#if defined(ESP8266)
 #include <ESP8266WiFi.h>
-#include <WiFiUdp.h>
 #include <ESP8266WebServer.h>
+#elif defined(ESP32)
+#include <WiFi.h>
+#include <WebServer.h>
+// not a nice hack but should
+#define ESP8266WebServer WebServer
+#else
+#error "Only ESP8266 or ESP32 are supported"
+#endif
+
+#include <WiFiUdp.h>
 
 #include "DPT.h"
 
@@ -371,6 +382,7 @@ class ESPKNXIP {
     callback_id_t callback_register(String name, callback_fptr_t cb, void *arg = nullptr, enable_condition_t cond = nullptr);
     void          callback_assign(callback_id_t id, address_t val);
 
+    void          udpAddress_set(const char *ip) { strncpy( udpAddress,ip,sizeof(udpAddress)-1); }
     void          physical_address_set(address_t const &addr);
     address_t     physical_address_get();
 
@@ -487,6 +499,34 @@ class ESPKNXIP {
     }
 
   private:
+    // AB
+    // TODO: make it parameters!!!
+    char udpAddress[13];
+
+    byte _txsequenceNumber;
+    byte _rxSequenceNumber;
+    byte ChannelId;
+    byte connected;
+    byte alive;
+    unsigned long next_ping;
+    unsigned long next_reconnect;
+
+    const int stateRequestTimerInterval = 3000;    // check every 3 seconds - this makes disconnect detection reasonably fast
+    const int reconnectRequestTimerInterval = 3000;    // check every 3 seconds - this makes disconnect detection reasonably fast
+
+    void  send_udp(uint8_t *datagram, size_t size);
+    void send_connect_request();
+    void SendTunnelingAck(byte sequenceNumber);
+
+    void reset_AB()
+    {
+      _txsequenceNumber=_rxSequenceNumber=ChannelId=connected=0;
+       next_ping = millis();
+       next_reconnect = next_ping + reconnectRequestTimerInterval;
+       next_ping += stateRequestTimerInterval;
+    }
+    // End of AB
+
     void __start();
     void __loop_knx();
 

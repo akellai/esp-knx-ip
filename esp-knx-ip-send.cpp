@@ -12,12 +12,18 @@
 
 void ESPKNXIP::send(address_t const &receiver, knx_command_type_t ct, uint8_t data_len, uint8_t *data)
 {
+	if( connected==0 )
+	{
+		DEBUG_PRINTLN(F("Cannot send while disconnected"));
+		return;
+	}
+
 	if (receiver.value == 0)
-	return;
+		return;
 #if SEND_CHECKSUM
-	uint32_t len = 6 + 2 + 8 + data_len + 1; // knx_pkt + cemi_msg + cemi_service + data + checksum
+	uint32_t len = 6 + 4 + 2 + 8 + data_len + 1; // knx_pkt + cemi_msg + cemi_service + data + checksum
 #else
-	uint32_t len = 6 + 2 + 8 + data_len; // knx_pkt + cemi_msg + cemi_service + data
+	uint32_t len = 6 + 4 + 2 + 8 + data_len; // knx_pkt + cemi_msg + cemi_service + data
 #endif
 	DEBUG_PRINT(F("Creating packet with len "));
 	DEBUG_PRINTLN(len)
@@ -25,10 +31,11 @@ void ESPKNXIP::send(address_t const &receiver, knx_command_type_t ct, uint8_t da
 	knx_ip_pkt_t *knx_pkt = (knx_ip_pkt_t *)buf;
 	knx_pkt->header_len = 0x06;
 	knx_pkt->protocol_version = 0x10;
-	knx_pkt->service_type = __ntohs(KNX_ST_ROUTING_INDICATION);
+	knx_pkt->service_type = __ntohs(0x420);
 	knx_pkt->total_len.len = __ntohs(len);
-	cemi_msg_t *cemi_msg = (cemi_msg_t *)knx_pkt->pkt_data;
-	cemi_msg->message_code = KNX_MT_L_DATA_IND;
+	cemi_msg_t *cemi_msg = (cemi_msg_t *) (buf+10);
+//	cemi_msg_t *cemi_msg = (cemi_msg_t *)knx_pkt->pkt_data;
+	cemi_msg->message_code = KNX_MT_L_DATA_REQ;
 	cemi_msg->additional_info_len = 0;
 	cemi_service_t *cemi_data = &cemi_msg->data.service_information;
 	cemi_data->control_1.bits.confirm = 0;
@@ -52,6 +59,16 @@ void ESPKNXIP::send(address_t const &receiver, knx_command_type_t ct, uint8_t da
 	memcpy(cemi_data->data, data, data_len);
 	cemi_data->data[0] = (cemi_data->data[0] & 0x3F) | ((ct & 0x03) << 6);
 
+	// AB!!!
+	buf[6] = 0x4;
+	buf[7] = ChannelId;
+	buf[8] = _txsequenceNumber++;
+	buf[9] = 0;
+
+	// HACK
+//	buf[12] = 0xBC;
+//	buf[13] = 0xE0;
+
 #if SEND_CHECKSUM
 	// Calculate checksum, which is just XOR of all bytes
 	uint8_t cs = buf[0] ^ buf[1];
@@ -70,9 +87,7 @@ void ESPKNXIP::send(address_t const &receiver, knx_command_type_t ct, uint8_t da
 	}
 	DEBUG_PRINTLN(F(""));
 
-	udp.beginPacketMulticast(MULTICAST_IP, MULTICAST_PORT, WiFi.localIP());
-	udp.write(buf, len);
-	udp.endPacket();
+        send_udp(buf, len);
 }
 
 void ESPKNXIP::send_1bit(address_t const &receiver, knx_command_type_t ct, uint8_t bit)

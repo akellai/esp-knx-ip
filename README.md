@@ -1,3 +1,11 @@
+# Akellai: converted to KNX Tunnelling protocol #
+The library is converted to use the Tunneling instead of UDP multicust
+The most noticable changes:
+- Use knx.udpAddress_set(IP) to specify the IP address of the KNX gateway
+- Use 0.0.0 as the physical address (let the gateway assign the address) - higly recommended
+- ESP32 support added 
+
+
 # ESP-KNX-IP #
 
 This is a library for the ESP8266 to enable KNXnet/IP communication. It uses UDP multicast on 224.0.23.12:3671.
