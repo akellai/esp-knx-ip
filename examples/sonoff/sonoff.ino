@@ -36,6 +36,7 @@ option_entry_t type_options[] = {
   {nullptr, 0}
 };
 
+config_id_t knxip_id;
 config_id_t hostname_id;
 config_id_t type_id;
 
@@ -69,6 +70,9 @@ void setup()
   Serial.begin(115200);
 
   // Register the config options
+  // Required for KNX tunnel
+  knxip_id = knx.config_register_string("KNX gateway IP", 20, String("192.168.0.10"));
+
   hostname_id = knx.config_register_string("Hostname", 20, String("sonoff"));
   type_id = knx.config_register_options("Type", type_options, SONOFF_TYPE_BASIC);
   
@@ -92,6 +96,7 @@ void setup()
   knx.feedback_register_action("Toogle channel 4", toggle_chan, &channels[3], is_4ch_or_4ch_pro);
 
   knx.load();
+  knx.udpAddress_set(knx.config_get_string(knxip_id).c_str());
 
   // Init WiFi
   WiFi.hostname(knx.config_get_string(hostname_id));
