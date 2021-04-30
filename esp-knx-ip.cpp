@@ -512,7 +512,9 @@ void ESPKNXIP::__loop_knx()
     {
       DEBUG_PRINT("Error getting KNX_ST_CONNECTIONSTATE_RESPONSE: Status code: ");
       DEBUG_PRINTLN(buf[7], 16);
-    }
+      // disconnect
+      reset_AB();
+  }
     return;
   }
 
