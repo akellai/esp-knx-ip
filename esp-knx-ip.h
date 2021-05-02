@@ -383,6 +383,7 @@ class ESPKNXIP {
     void          callback_assign(callback_id_t id, address_t val);
 
     void          udpAddress_set(const char *ip) { strncpy( udpAddress,ip,sizeof(udpAddress)-1); }
+    void          web_enable(bool enable) { b_web_enabled = enable; }
     void          physical_address_set(address_t const &addr);
     address_t     physical_address_get();
 
@@ -502,6 +503,7 @@ class ESPKNXIP {
     // AB
     // TODO: make it parameters!!!
     char udpAddress[13];
+    bool b_web_enabled = 1;
 
     byte _txsequenceNumber;
     byte _rxSequenceNumber;
@@ -514,7 +516,7 @@ class ESPKNXIP {
     const int stateRequestTimerInterval = 3000;    // check every 3 seconds - this makes disconnect detection reasonably fast
     const int reconnectRequestTimerInterval = 3000;    // check every 3 seconds - this makes disconnect detection reasonably fast
 
-    void  send_udp(uint8_t *datagram, size_t size);
+    void send_udp(uint8_t *datagram, size_t size);
     void send_connect_request();
     void SendTunnelingAck(byte sequenceNumber);
 

@@ -385,7 +385,7 @@ feedback_id_t ESPKNXIP::feedback_register_action(String name, feedback_action_fp
 void ESPKNXIP::loop()
 {
   __loop_knx();
-  if (server != nullptr)
+  if( (server != nullptr) && b_web_enabled )
   {
     __loop_webserver();
   }
@@ -514,7 +514,7 @@ void ESPKNXIP::__loop_knx()
       DEBUG_PRINTLN(buf[7], 16);
       // disconnect
       reset_AB();
-  }
+    }
     return;
   }
 
