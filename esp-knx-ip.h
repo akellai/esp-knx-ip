@@ -267,7 +267,7 @@ typedef struct __cemi_msg
   uint8_t additional_info_len;
   union
   {
-    cemi_addi_t additional_info[];
+    cemi_addi_t additional_info[0];
     cemi_service_t service_information;
   } data;
 } cemi_msg_t;
