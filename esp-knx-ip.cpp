@@ -409,7 +409,8 @@ void ESPKNXIP::__loop_knx()
       {
         // disconnect!!!
         DEBUG_PRINTLN("No ACKs: alive==0!!!");
-        reset_AB();
+        ESP.restart();
+        //reset_AB();
         return;
         // TODO: send disconnec t request
       }
