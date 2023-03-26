@@ -41,7 +41,7 @@ void ESPKNXIP::__handle_root()
           break;
         case FEEDBACK_TYPE_FLOAT:
           m += F("<span class='input-group-text'>");
-          m += String(*(float *)feedbacks[i].data, feedbacks[i].options.float_options.precision);
+          m += String(*(float *)feedbacks[i].data, (unsigned int) feedbacks[i].options.float_options.precision);
           m += F("</span>");
           break;
         case FEEDBACK_TYPE_BOOL:
