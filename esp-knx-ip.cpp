@@ -561,6 +561,7 @@ void ESPKNXIP::__loop_knx()
       DEBUG_PRINTLN("KNX_ST_TUNNELING_ACK: unexpected _txsequenceNumber");
       _txsequenceNumber = buf[8]+1;
     }
+    return;
   }
 
   if (cemi_msg->message_code != KNX_MT_L_DATA_IND)
