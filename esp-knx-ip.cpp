@@ -237,6 +237,10 @@ callback_assignment_id_t ESPKNXIP::__callback_register_assignment(address_t addr
   if (registered_callback_assignments >= MAX_CALLBACK_ASSIGNMENTS)
     return -1;
 
+  for( callback_assignment_id_t i=0; i<registered_callback_assignments; i++ )
+    if( callback_assignments[i].address.value == address.value )
+      return i;
+
   callback_assignment_id_t aid = registered_callback_assignments;
 
   callback_assignments[aid].address = address;
@@ -540,7 +544,28 @@ void ESPKNXIP::__loop_knx()
   }
 
   if( KNX_ST_TUNNELING_REQUEST==__ntohs(knx_pkt->service_type) )
+  {
     SendTunnelingAck(buf[8]);
+    return;
+  }
+
+  if( KNX_ST_TUNNELING_ACK==__ntohs(knx_pkt->service_type) )
+  {
+    if( read<10 )
+    {
+      DEBUG_PRINTLN("KNX_ST_TUNNELING_ACK is less than 10 bytes");
+      return;
+    }
+    if( buf[8]==_txsequenceNumber )
+      _txsequenceNumber++;
+    else
+    {
+      // may be connection reset is a better idea?
+      DEBUG_PRINTLN("KNX_ST_TUNNELING_ACK: unexpected _txsequenceNumber");
+      _txsequenceNumber = buf[8]+1;
+    }
+    return;
+  }
 
   if (cemi_msg->message_code != KNX_MT_L_DATA_IND)
     return;

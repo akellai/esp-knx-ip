@@ -41,7 +41,7 @@
 #define SEND_CHECKSUM             0
 
 // Uncomment to enable printing out debug messages.
-#define ESP_KNX_DEBUG
+//#define ESP_KNX_DEBUG
 /**
  * END CONFIG
  */
@@ -414,6 +414,8 @@ class ESPKNXIP {
 
     // Send functions
     void send(address_t const &receiver, knx_command_type_t ct, uint8_t data_len, uint8_t *data);
+
+    void send_read_req(address_t const &receiver);
 
     void send_1bit(address_t const &receiver, knx_command_type_t ct, uint8_t bit);
     void send_2bit(address_t const &receiver, knx_command_type_t ct, uint8_t twobit);

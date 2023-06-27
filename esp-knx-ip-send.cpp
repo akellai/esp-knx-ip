@@ -62,7 +62,7 @@ void ESPKNXIP::send(address_t const &receiver, knx_command_type_t ct, uint8_t da
 	// AB!!!
 	buf[6] = 0x4;
 	buf[7] = ChannelId;
-	buf[8] = _txsequenceNumber++;
+	buf[8] = _txsequenceNumber;
 	buf[9] = 0;
 
 	// HACK
@@ -88,6 +88,12 @@ void ESPKNXIP::send(address_t const &receiver, knx_command_type_t ct, uint8_t da
 	DEBUG_PRINTLN(F(""));
 
         send_udp(buf, len);
+}
+
+void ESPKNXIP::send_read_req(address_t const &receiver)
+{
+	uint8_t buf[] = {0};
+	send(receiver, KNX_CT_READ, 1, buf);
 }
 
 void ESPKNXIP::send_1bit(address_t const &receiver, knx_command_type_t ct, uint8_t bit)
