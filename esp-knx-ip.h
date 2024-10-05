@@ -297,6 +297,12 @@ typedef enum __config_flags
   CONFIG_FLAGS_VALUE_SET = 1,
 } config_flags_t;
 
+typedef enum __slot_flags
+{
+  SLOT_FLAGS_EMPTY = 0, // Empty slots have no flags
+  SLOT_FLAGS_USED = 1,
+} slot_flags_t;
+
 typedef struct __message
 {
   knx_command_type_t ct;
@@ -311,6 +317,7 @@ typedef void (*feedback_action_fptr_t)(void *arg);
 
 typedef uint8_t callback_id_t;
 typedef uint8_t callback_assignment_id_t;
+#define CALLBACK_ASSIGNMENT_ID_MAX UINT8_MAX
 typedef uint8_t config_id_t;
 typedef uint8_t feedback_id_t;
 
@@ -356,6 +363,7 @@ typedef struct __feedback
 
 typedef struct __callback
 {
+  uint8_t slot_flags;
   callback_fptr_t fkt;
   enable_condition_t cond;
   void *arg;
@@ -364,6 +372,7 @@ typedef struct __callback
 
 typedef struct __callback_assignment
 {
+  uint8_t slot_flags;
   address_t address;
   callback_id_t callback_id;
 } callback_assignment_t;
@@ -381,6 +390,8 @@ class ESPKNXIP {
 
     callback_id_t callback_register(String name, callback_fptr_t cb, void *arg = nullptr, enable_condition_t cond = nullptr);
     void          callback_assign(callback_id_t id, address_t val);
+    void          callback_deregister(callback_id_t id);
+    void          callback_unassign(callback_assignment_id_t id);
 
     void          udpAddress_set(const char *ip) { strncpy( udpAddress,ip,sizeof(udpAddress)-1); }
     void          web_enable(bool enable) { b_web_enabled = enable; }
@@ -560,6 +571,8 @@ class ESPKNXIP {
     void __config_set_options(config_id_t id, uint8_t val);
     void __config_set_ga(config_id_t id, address_t const &val);
 
+    bool __callback_is_id_valid(callback_id_t id);
+
     callback_assignment_id_t __callback_register_assignment(address_t address, callback_id_t id);
     void __callback_delete_assignment(callback_assignment_id_t id);
 
@@ -571,6 +584,7 @@ class ESPKNXIP {
     callback_assignment_t callback_assignments[MAX_CALLBACK_ASSIGNMENTS];
 
     callback_id_t registered_callbacks;
+    callback_id_t free_callback_slots;
     callback_t callbacks[MAX_CALLBACKS];
 
     config_id_t registered_configs;

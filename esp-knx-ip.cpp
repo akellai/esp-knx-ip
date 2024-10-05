@@ -249,6 +249,60 @@ callback_assignment_id_t ESPKNXIP::__callback_register_assignment(address_t addr
   return aid;
 }
 
+void ESPKNXIP::callback_deregister(callback_id_t id)
+{
+  if (!__callback_is_id_valid(id))
+    return;
+
+  // clear slot and mark it as empty
+  callbacks[id].slot_flags = SLOT_FLAGS_EMPTY;
+  callbacks[id].fkt = nullptr;
+  callbacks[id].cond = nullptr;
+  callbacks[id].arg = nullptr;
+
+  if (id == registered_callbacks - 1)
+  {
+    // If this is the last callback, we can delete it by decrementing registered_callbacks.
+    registered_callbacks--;
+
+    // However, if the callbacks before this slot are also empty, we can decrement even further
+    // First check if this was also the first element
+    if (id == 0)
+    {
+      // If this was the last, then we are done.
+      return;
+    }
+
+    id--;
+    while(true)
+    {
+      if ((callbacks[id].slot_flags & SLOT_FLAGS_USED) == 0)
+      {
+        // Slot is empty
+        free_callback_slots--;
+        registered_callbacks--;
+      }
+      else
+      {
+        // Slot is used, abort
+        return;
+      }
+      id--;
+      if (id == CALLBACK_ASSIGNMENT_ID_MAX)
+      {
+        // Wrap around, abort
+        return;
+      }
+    }
+  }
+  else
+  {
+    // there is now one more free slot
+    free_callback_slots++;
+  }
+}
+
+
 void ESPKNXIP::__callback_delete_assignment(callback_assignment_id_t id)
 {
   if (id >= registered_callback_assignments)
@@ -289,6 +343,17 @@ void ESPKNXIP::__callback_delete_assignment(callback_assignment_id_t id)
   registered_callback_assignments--;
 }
 
+bool ESPKNXIP::__callback_is_id_valid(callback_id_t id)
+{
+  if (id < registered_callbacks)
+    return true;
+
+  if (callbacks[id].slot_flags & SLOT_FLAGS_USED)
+    return true;
+
+  return false;
+}
+
 callback_id_t ESPKNXIP::callback_register(String name, callback_fptr_t cb, void *arg, enable_condition_t cond)
 {
   if (registered_callbacks >= MAX_CALLBACKS)
@@ -311,6 +376,15 @@ void ESPKNXIP::callback_assign(callback_id_t id, address_t val)
 
   __callback_register_assignment(val, id);
 }
+
+void ESPKNXIP::callback_unassign(callback_assignment_id_t id)
+{
+  if (!__callback_is_id_valid(id))
+    return;
+
+  __callback_delete_assignment(id);
+}
+
 
 /**
  * Feedback functions start here
