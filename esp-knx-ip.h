@@ -25,11 +25,11 @@
 #define ALLOW_MULTIPLE_CALLBACKS_PER_ADDRESS  0 // [Default 0] Set to 1 to always test all assigned callbacks. This allows for multiple callbacks being assigned to the same address. If disabled, only the first assigned will be called.
 
 // Webserver related
-#define USE_BOOTSTRAP             1 // [Default 1] Set to 1 to enable use of bootstrap CSS for nicer webconfig. CSS is loaded from bootstrapcdn.com. Set to 0 to disable
-#define ROOT_PREFIX               ""  // [Default ""] This gets prepended to all webserver paths, default is empty string "". Set this to "/knx" if you want the config to be available on http://<ip>/knx
-#define DISABLE_EEPROM_BUTTONS    0 // [Default 0] Set to 1 to disable the EEPROM buttons in the web ui.
-#define DISABLE_REBOOT_BUTTON     0 // [Default 0] Set to 1 to disable the reboot button in the web ui.
-#define DISABLE_RESTORE_BUTTON    0 // [Default 0] Set to 1 to disable the "restore defaults" button in the web ui.
+#define USE_BOOTSTRAP             0 // [Default 1] Set to 1 to enable use of bootstrap CSS for nicer webconfig. CSS is loaded from bootstrapcdn.com. Set to 0 to disable
+#define ROOT_PREFIX               "/knx"  // [Default ""] This gets prepended to all webserver paths, default is empty string "". Set this to "/knx" if you want the config to be available on http://<ip>/knx
+#define DISABLE_EEPROM_BUTTONS    1 // [Default 0] Set to 1 to disable the EEPROM buttons in the web ui.
+#define DISABLE_REBOOT_BUTTON     1 // [Default 0] Set to 1 to disable the reboot button in the web ui.
+#define DISABLE_RESTORE_BUTTON    1 // [Default 0] Set to 1 to disable the "restore defaults" button in the web ui.
 
 // These values normally don't need adjustment
 #ifndef MULTICAST_PORT
@@ -55,8 +55,6 @@
 #elif defined(ESP32)
 #include <WiFi.h>
 #include <WebServer.h>
-// not a nice hack but should
-#define ESP8266WebServer WebServer
 #else
 #error "Only ESP8266 or ESP32 are supported"
 #endif
@@ -382,7 +380,11 @@ class ESPKNXIP {
     ESPKNXIP();
     void load();
     void start();
+#if defined(ESP8266)
     void start(ESP8266WebServer *srv);
+#elif defined(ESP32)
+    void start(WebServer *srv);
+#endif
     void loop();
 
     void save_to_eeprom();
@@ -576,7 +578,11 @@ class ESPKNXIP {
     callback_assignment_id_t __callback_register_assignment(address_t address, callback_id_t id);
     void __callback_delete_assignment(callback_assignment_id_t id);
 
+#if defined(ESP8266)
     ESP8266WebServer *server;
+#elif defined(ESP32)
+    WebServer *server;
+#endif
     address_t physaddr;
     WiFiUDP udp;
 

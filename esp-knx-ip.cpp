@@ -27,7 +27,11 @@ void ESPKNXIP::load()
   restore_from_eeprom();
 }
 
+#if defined(ESP8266)
 void ESPKNXIP::start(ESP8266WebServer *srv)
+#elif defined(ESP32)
+void ESPKNXIP::start(WebServer *srv)
+#endif
 {
   server = srv;
   __start();
@@ -35,7 +39,11 @@ void ESPKNXIP::start(ESP8266WebServer *srv)
 
 void ESPKNXIP::start()
 {
+#if defined(ESP8266)
   server = new ESP8266WebServer(80);
+#elif defined(ESP32)
+  server = new WebServer(80);
+#endif
   __start();
 }
 
