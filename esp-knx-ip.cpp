@@ -48,6 +48,15 @@ void ESPKNXIP::start()
   __start();
 }
 
+
+void ESPKNXIP::udpAddress_set(const char *ip) {
+   if( ip ) {
+     IPAddress addr;
+     if( addr.fromString(ip) )
+       strncpy( udpAddress, ip, sizeof(udpAddress)-1 );
+   }
+}
+
 void  ESPKNXIP::send_udp(uint8_t *datagram, size_t size)
 {
   DEBUG_PRINT(F("Sending packet:"));
