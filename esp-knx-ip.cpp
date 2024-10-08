@@ -13,6 +13,7 @@ ESPKNXIP::ESPKNXIP() : server(nullptr), registered_callback_assignments(0), regi
   // Default physical address is 0.0.0
   physaddr.bytes.high = 0;
   physaddr.bytes.low = 0;
+  udpAddress_set("127.0.0.1");
   memset(callback_assignments, 0, MAX_CALLBACK_ASSIGNMENTS * sizeof(callback_assignment_t));
   memset(callbacks, 0, MAX_CALLBACKS * sizeof(callback_fptr_t));
   memset(custom_config_data, 0, MAX_CONFIG_SPACE * sizeof(uint8_t));

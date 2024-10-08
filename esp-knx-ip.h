@@ -395,7 +395,7 @@ class ESPKNXIP {
     void          callback_deregister(callback_id_t id);
     void          callback_unassign(callback_assignment_id_t id);
 
-    void          udpAddress_set(const char *ip) { strncpy( udpAddress,ip,sizeof(udpAddress)-1); }
+    void          udpAddress_set(const char *ip) { if( ip ) strncpy( udpAddress,ip,sizeof(udpAddress)-1); }
     void          web_enable(bool enable) { b_web_enabled = enable; }
     void          physical_address_set(address_t const &addr);
     address_t     physical_address_get();
@@ -517,7 +517,7 @@ class ESPKNXIP {
   private:
     // AB
     // TODO: make it parameters!!!
-    char udpAddress[13];
+    char udpAddress[16];
     bool b_web_enabled = 1;
 
     byte _txsequenceNumber;
